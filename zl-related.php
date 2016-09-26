@@ -1,14 +1,14 @@
 <?php
 /*
-Plugin Name: Related
-Plugin URI: http://products.zenoweb.nl/free-wordpress-plugins/related/
-Description: A simple 'related posts' plugin that lets you select related posts manually.
-Version: 2.0.6
-Author: Marcel Pol
-Author URI: http://zenoweb.nl
+Plugin Name: Zipline's Related Posts
+Plugin URI: https://wearezipline.com
+Description: A simple 'related posts' plugin that lets you select related posts manually. Forked from 'Related' plugin by Marcel Pol
+Version: 2.1
+Author: Zipline
+Author URI: https://wearezipline.com
 Text Domain: related
 Domain Path: /lang/
-
+Original Author: Marcel Pol
 
 Copyright 2010-2012  Matthias Siegel  (email: matthias.siegel@gmail.com)
 Copyright 2013-2015  Marcel Pol       (email: marcel@timelord.nl)
@@ -30,8 +30,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 
-if (!class_exists('Related')) :
-	class Related {
+if (!class_exists('ZL_Related')) :
+	class ZL_Related {
 
 		/*
 		 * __construct
@@ -50,6 +50,9 @@ if (!class_exists('Related')) :
 
 			// Add the related posts to the content, if set in options
 			add_filter( 'the_content', array($this, 'related_content_filter') );
+			
+			// Add the link to relate content easier
+			add_filter( 'the_content', array( &$this, 'add_relate_links' ));
 		}
 
 
@@ -58,13 +61,12 @@ if (!class_exists('Related')) :
 		 * Defines a few static helper values we might need
 		 */
 		protected function defineConstants() {
-			define('RELATED_VERSION', '2.0.6');
-			define('RELATED_HOME', 'http://zenoweb.nl');
+			define('RELATED_VERSION', '2.1');
+			define('RELATED_HOME', 'https://wearezipline.com');
 			define('RELATED_FILE', plugin_basename(dirname(__FILE__)));
 			define('RELATED_ABSPATH', str_replace('\\', '/', WP_PLUGIN_DIR . '/' . plugin_basename(dirname(__FILE__))));
 			define('RELATED_URLPATH', WP_PLUGIN_URL . '/' . plugin_basename(dirname(__FILE__)));
 		}
-
 
 		/*
 		 * start
@@ -94,7 +96,17 @@ if (!class_exists('Related')) :
 					add_meta_box($post_type . '-related-posts-box', __('Related posts', 'related' ), array(&$this, 'displayMetaBox'), $post_type, 'normal', 'high');
 				endforeach;
 			}
-
+			
+			add_action( 'restrict_manage_posts', array( &$this, 'add_selected_post_to_filter' ));
+			
+			if ( $this->get_selected_post_id() ) {
+				if ( $this->get_selected_post_action() == 'add' ) {
+					$this->add_related_post();
+				} else {
+					add_action( 'admin_notices', array( &$this, 'add_admin_notice' ));
+					add_filter( 'get_edit_post_link', array( &$this, 'add_selected_post_id_to_edit_link' ));
+				}
+			}
 		}
 
 
@@ -130,6 +142,9 @@ if (!class_exists('Related')) :
 			if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
 
 			if ( isset($_POST['related-posts']) ) {
+				print_r($_POST['related-posts']);
+				exit;
+				
 				update_post_meta($id, 'related_posts', $_POST['related-posts']);
 			}
 			/* Only delete on post.php page, not on Quick Edit. */
@@ -216,7 +231,7 @@ if (!class_exists('Related')) :
 				if ( ! empty( $posts ) ) {
 					$args = array($posts, 0, $r);
 
-					$walker = new Walker_RelatedDropdown;
+					$walker = new ZL_Walker_RelatedDropdown;
 					echo call_user_func_array( array( $walker, 'walk' ), $args );
 				}
 
@@ -310,64 +325,181 @@ if (!class_exists('Related')) :
 			return $content;
 		}
 
+		/**
+		 * Add links to the post content for relating posts
+		 * 
+		 * @param string $content
+		 * @return string
+		 */
+		public function add_relate_links ( $content ) {
+			$post_id = get_the_ID();
+			
+			if ( !current_user_can( 'edit_post', $post_id ) )
+				return;
+			
+			$divider = '<span class="related-divider"> | </span>';
+			$relate_url = admin_url( sprintf( 'edit.php?zl-related-post-id=%s', $post_id ) );
+			
+			$links = array(
+				sprintf( '<a href="%s" class="zl-relate-link-add">Add to Curated Post</a>', $relate_url ),
+			);
+			
+			$content .= '<div class="zl-relate-links">';
+			$content .= implode( $divider, $links ).' ';
+			$content .= '</div>';
+			
+			return $content;
+		}
+		
+		/**
+		 * Add selected post id to filter form
+		 */
+		public function add_selected_post_to_filter () {
+			$post_id = $this->get_selected_post_id();
+			echo sprintf( '<INPUT TYPE="hidden" name="zl-related-post-id" value="%s" />', $post_id );
+		}
+		
+		/**
+		 * Tell user what to do if we have selected a filter form
+		 */
+		public function add_admin_notice () {
+			echo '<div class="notice notice-info"><p>Select post to add related post to.</p></div>';
+		}
+		
+		/**
+		 * Tell user what to do when they try and relate a post to itself
+		 */
+		public function add_error_admin_notice () {
+			echo '<div class="notice notice-error"><p>You cannot relate a post to itself.</p></div>';
+		}
+		
+		/**
+		 * Tell user we added meta
+		 */
+		public function add_complete_admin_notice () {
+			$post_id = $this->get_selected_post_id();
+			
+			$link = get_permalink( $post_id );
+			$message = sprintf('<p>Selected post has been added to curation list. <a href="%s">Return to post.</a></p>', $link);
+			echo '<div class="notice notice-success">'.$message.'</div>';
+		}
+		
+		/**
+		 * Get selected post id from request
+		 * @return int
+		 */
+		public function get_selected_post_id () {
+			return filter_input( INPUT_GET, 'zl-related-post-id', FILTER_SANITIZE_NUMBER_INT );
+		}
+		
+		/**
+		 * Get selected post action from request
+		 * @return int
+		 */
+		public function get_selected_post_action () {
+			return filter_input( INPUT_GET, 'zl-related-action', FILTER_SANITIZE_STRING );
+		}
+		
+		
+		/**
+		 * Add the selected post id to the edit link
+		 * 
+		 * @param string $link
+		 * @return string
+		 */
+		public function add_selected_post_id_to_edit_link ( $link ) {
+			$url = parse_url($link);
+			
+			if ( !empty( $url['query'] )) {
+				$link .= '&';
+			}
+
+			$post_id = $this->get_selected_post_id();
+			return $link .= 'zl-related-post-id='.$post_id.'&zl-related-action=add';
+		}
+		
+		/**
+		 * Add the selected post to the post we are editing
+		 */
+		public function add_related_post () {
+			$id = filter_input( INPUT_GET, 'post', FILTER_SANITIZE_NUMBER_INT );
+			$selected = $this->get_selected_post_id();
+			
+			if ( $id && $selected ) {
+				if ( $id == $selected ) {
+					add_action( 'admin_notices', array( &$this, 'add_error_admin_notice' ));
+				} else {
+					$meta = get_post_meta( $id, 'related_posts', true );
+
+					if ( !in_array( $selected, $meta )) {
+						$meta[] = $selected;
+						update_post_meta( $id, 'related_posts', $meta );
+					}
+
+					add_action( 'admin_notices', array( &$this, 'add_complete_admin_notice' ));
+				}
+			}
+		}
 	}
 
 endif;
 
-
-/**
- * Create HTML dropdown list of hierarchical post_types.
- * Returns the list of <option>'s for the select dropdown.
- */
-class Walker_RelatedDropdown extends Walker {
+if (!class_exists('ZL_Walker_RelatedDropdown')) :
+	
 	/**
-	 * @see Walker::$tree_type
-	 * @since 2.1.0
-	 * @var string
+	 * Create HTML dropdown list of hierarchical post_types.
+	 * Returns the list of <option>'s for the select dropdown.
 	 */
-	public $tree_type = 'page';
-
-	/**
-	 * @see Walker::$db_fields
-	 * @since 2.1.0
-	 * @todo Decouple this
-	 * @var array
-	 */
-	public $db_fields = array ('parent' => 'post_parent', 'id' => 'ID');
-
-	/**
-	 * @see Walker::start_el()
-	 * @since 2.1.0
-	 *
-	 * @param string $output Passed by reference. Used to append additional content.
-	 * @param object $page   Page data object.
-	 * @param int    $depth  Depth of page in reference to parent pages. Used for padding.
-	 * @param int $id
-	 */
-	public function start_el( &$output, $page, $depth = 0, $args = array(), $id = 0 ) {
-		$pad = str_repeat('&nbsp;', $depth * 3);
-
-		$output .= "\t<option class=\"level-$depth\" value=\"" . esc_attr( $page->ID ) . "\">";
-
-		$title = $page->post_title;
-		if ( '' === $title ) {
-			$title = sprintf( __( '#%d (no title)', 'related' ), $page->ID );
-		}
+	class ZL_Walker_RelatedDropdown extends Walker {
+		/**
+		 * @see Walker::$tree_type
+		 * @since 2.1.0
+		 * @var string
+		 */
+		public $tree_type = 'page';
 
 		/**
-		 * Filter the page title when creating an HTML drop-down list of pages.
-		 *
-		 * @since 3.1.0
-		 *
-		 * @param string $title Page title.
-		 * @param object $page  Page data object.
+		 * @see Walker::$db_fields
+		 * @since 2.1.0
+		 * @todo Decouple this
+		 * @var array
 		 */
-		$title = apply_filters( 'list_pages', $title, $page );
-		$output .= $pad . esc_html( $title );
-		$output .= "</option>\n";
-	}
-}
+		public $db_fields = array ('parent' => 'post_parent', 'id' => 'ID');
 
+		/**
+		 * @see Walker::start_el()
+		 * @since 2.1.0
+		 *
+		 * @param string $output Passed by reference. Used to append additional content.
+		 * @param object $page   Page data object.
+		 * @param int    $depth  Depth of page in reference to parent pages. Used for padding.
+		 * @param int $id
+		 */
+		public function start_el( &$output, $page, $depth = 0, $args = array(), $id = 0 ) {
+			$pad = str_repeat('&nbsp;', $depth * 3);
+
+			$output .= "\t<option class=\"level-$depth\" value=\"" . esc_attr( $page->ID ) . "\">";
+
+			$title = $page->post_title;
+			if ( '' === $title ) {
+				$title = sprintf( __( '#%d (no title)', 'related' ), $page->ID );
+			}
+
+			/**
+			 * Filter the page title when creating an HTML drop-down list of pages.
+			 *
+			 * @since 3.1.0
+			 *
+			 * @param string $title Page title.
+			 * @param object $page  Page data object.
+			 */
+			$title = apply_filters( 'list_pages', $title, $page );
+			$output .= $pad . esc_html( $title );
+			$output .= "</option>\n";
+		}
+	}
+	
+endif;
 
 /*
  * related_links
@@ -375,21 +507,20 @@ class Walker_RelatedDropdown extends Walker {
  *
  */
 
-function related_links( $links, $file ) {
-	if ( $file == plugin_basename( dirname(__FILE__).'/related.php' ) ) {
-		$links[] = '<a href="' . admin_url( 'options-general.php?page=related.php' ) . '">'.__( 'Settings', 'related' ).'</a>';
+function zl_related_links( $links, $file ) {
+	if ( $file == plugin_basename( dirname(__FILE__).'/zl-related.php' ) ) {
+		$links[] = '<a href="' . admin_url( 'options-general.php?page=zl-related.php' ) . '">'.__( 'Settings', 'related' ).'</a>';
 	}
 	return $links;
 }
-add_filter( 'plugin_action_links', 'related_links', 10, 2 );
+add_filter( 'plugin_action_links', 'zl_related_links', 10, 2 );
 
 
 /* Include Settings page */
-include( 'page-related.php' );
+include( 'zl-page-related.php' );
 
 /* Include widget */
-include( 'related-widget.php' );
-
+//include( 'related-widget.php' );
 
 /*
  * related_init
@@ -398,12 +529,12 @@ include( 'related-widget.php' );
  * - Make an instance of Related()
  */
 
-function related_init() {
+function zl_related_init() {
 	load_plugin_textdomain('related', false, dirname( plugin_basename( __FILE__ ) ) . '/lang/');
 
 	// Start the plugin
 	global $related;
-	$related = new Related();
+	$related = new ZL_Related();
 }
-add_action('plugins_loaded', 'related_init');
+add_action('plugins_loaded', 'zl_related_init');
 

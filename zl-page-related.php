@@ -8,13 +8,13 @@
 /*
  * Adds an option page to Settings
  */
-function related_options() {
-	add_options_page(__('Related Posts', 'related'), __('Related Posts', 'related'), 'manage_options', 'related.php', 'related_options_page');
+function zl_related_options() {
+	add_options_page(__('ZL Related Posts', 'related'), __('ZL Related Posts', 'related'), 'manage_options', 'zl-related.php', 'zl_related_options_page');
 }
-add_action('admin_menu', 'related_options');
+add_action('admin_menu', 'zl_related_options');
 
 
-function related_options_page() {
+function zl_related_options_page() {
 	// Handle the POST
 	$active_tab = 'related_show'; /* default tab */
 	if ( isset( $_POST['form'] ) ) {
@@ -72,7 +72,7 @@ function related_options_page() {
 
 	<div class="wrap">
 
-	<h1><?php _e('Related Posts', 'related'); ?></h1>
+	<h1><?php _e("Zipline's Related Posts", 'related'); ?></h1>
 
 	<h2 class="nav-tab-wrapper related-nav-tab-wrapper">
 		<a href="#" class="nav-tab <?php if ($active_tab == 'related_show') { echo "nav-tab-active";} ?>" rel="related_post_types"><?php _e('Post types', 'related'); ?></a>
@@ -235,25 +235,13 @@ function related_options_page() {
 		<div class="poststuff metabox-holder">
 			<div class="related-widget">
 				<h3 class="widget-top"><?php _e('About this plugin.', 'related'); ?></h3>
-				<p><?php _e('This plugin is being maintained by Marcel Pol from', 'related'); ?>
+				
+				<p><?php _e("This plugin is maintained by", 'related'); ?>
+					<a href="https://wearezipline.com" target="_blank" title="Zipline">Zipline</a>.
+				</p>
+				
+				<p><?php _e("This plugin is forked from 'Related' by Marcel Pol from", 'related'); ?>
 					<a href="http://zenoweb.nl" target="_blank" title="ZenoWeb">ZenoWeb</a>.
-				</p>
-
-				<h3 class="widget-top"><?php _e('Review this plugin.', 'related'); ?></h3>
-				<p><?php _e('If this plugin has any value to you, then please leave a review at', 'related'); ?>
-					<a href="https://wordpress.org/support/view/plugin-reviews/related" target="_blank" title="<?php esc_attr_e('The plugin page at wordpress.org.', 'related'); ?>">
-						<?php _e('the plugin page at wordpress.org', 'related'); ?>
-					</a>.
-				</p>
-
-				<h3 class="widget-top"><?php _e('Donate to the EFF.', 'related'); ?></h3>
-				<p><?php _e('The Electronic Frontier Foundation is one of the few organisations that wants to keep the internet a free place.', 'related'); ?></p>
-				<p><a href="https://supporters.eff.org/donate" target="_blank" title="<?php esc_attr_e('Please donate to the EFF.', 'related'); ?>"><?php _e('Please donate to the EFF.', 'related'); ?></a></p>
-
-				<h3 class="widget-top"><?php _e('Donate to the maintainer.', 'related'); ?></h3>
-				<p><?php _e('If you rather want to donate to the maintainer of the plugin, you can donate through PayPal.', 'related'); ?></p>
-				<p><?php _e('Donate through', 'related'); ?> <a href="https://www.paypal.com" target="_blank" title="<?php esc_attr_e('Donate to the maintainer.', 'related'); ?>"><?php _e('PayPal', 'related'); ?></a>
-					<?php _e('to', 'related'); ?> marcel@timelord.nl.
 				</p>
 			</div>
 		</div>

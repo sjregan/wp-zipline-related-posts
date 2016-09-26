@@ -1,16 +1,16 @@
 === Related ===
-Contributors: mpol
+Contributors: zipline,mpol
 Tags: related, post, related post, related posts, related content, similar posts, link, linked, linked post, linked posts, internal links, widget, post2post, posts2posts, posts 2 posts, pods
 Requires at least: 3.3
 Tested up to: 4.3
-Stable tag: 2.0.6
+Stable tag: 2.1
 License: GPLv2 or later
 
 A simple 'related posts' plugin that lets you select related posts manually.
 
 == Description ==
 
-A simple 'related posts' plugin that lets you select related posts manually. Supports any post types in WordPress, including custom ones.
+A simple 'related posts' plugin that lets you select related posts manually. Supports any post types in WordPress, including custom ones. This fork adds a front end link to add related posts.
 
 
 Features:
@@ -34,15 +34,6 @@ To display the related posts, there are three options:
 * Add PHP code to your template, see the installation docs.
 
 For advanced options, see the installation docs.
-
-= Languages =
-
-* nl_NL [Marcel Pol](http://zenoweb.nl)
-* de_DE [Eckart Schmidt](http://altoplan.de)
-* fa_IR [Mohsen Pahlevanzadeh](http://www.chpert.net/)
-* sr_RS [Borisa Djuraskovic](http://www.webhostinghub.com)
-
-If you care to translate this plugin into your own language, please send the translated po file to marcel at zenoweb dot nl.
 
 == Installation ==
 
@@ -168,6 +159,11 @@ Yes, it is again actively maintained.
 2. Widget in the frontend on Twenty Fourteen Theme
 
 == Changelog ==
+
+= 2.1 =
+* 2016-09-26
+* Added front end link
+
 
 = 2.0.7 =
 * 2015-
