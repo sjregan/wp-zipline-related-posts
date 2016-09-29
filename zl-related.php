@@ -52,7 +52,8 @@ if (!class_exists('ZL_Related')) :
 			add_filter( 'the_content', array($this, 'related_content_filter') );
 			
 			// Add the link to relate content easier
-			add_filter( 'the_content', array( &$this, 'add_relate_links' ));
+			// This doesn't play well with summaries
+			// add_filter( 'the_content', array( &$this, 'add_relate_links' ));
 		}
 
 
@@ -248,60 +249,56 @@ if (!class_exists('ZL_Related')) :
 
 		}
 
-
-		/*
-		 * show
-		 * The frontend function that is used to display the related post list
+		/**
+		 * Fetch the templated list of related posts
+		 * 
+		 * @param int $post_id
 		 */
-		public function show( $id, $return = false ) {
-
-			global $wpdb;
-
+		public function fetch_list( $post_id ) {
 			/* Compatibility for Qtranslate, Qtranslate-X and MQtranslate, and the get_permalink function */
 			$plugin = "qtranslate/qtranslate.php";
 			$q_plugin = "qtranslate-x/qtranslate.php";
 			$m_plugin = "mqtranslate/mqtranslate.php";
 			include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+			
 			if ( is_plugin_active($plugin) || is_plugin_active($q_plugin) || is_plugin_active($m_plugin) ) {
 				add_filter('post_type_link', 'qtrans_convertURL');
 			}
 
-			if (!empty($id) && is_numeric($id)) :
-				$related = get_post_meta($id, 'related_posts', true);
+			if ( empty( $post_id ) || !is_numeric( $post_id )) {
+				return;
+			}
+			
+			$related_ids = get_post_meta( $post_id, 'related_posts', true);
 
-				if (!empty($related)) :
-					$rel = array();
-					foreach ($related as $r) :
-						$p = get_post($r);
-						$rel[] = $p;
-					endforeach;
+			if ( empty( $related_ids )) {
+				return;
+			}
 
-					// If value should be returned as array, return it
-					if ($return) :
-						return $rel;
-
-					// Otherwise return a formatted list
-					else :
-						if ( is_array( $rel ) && count( $rel ) > 0 ) {
-							$list = '<ul class="related-posts">';
-							foreach ($rel as $r) :
-								if ( is_object( $r ) ) {
-									if ($r->post_status != 'trash') {
-										$list .= '<li><a href="' . get_permalink($r->ID) . '">' . get_the_title($r->ID) . '</a></li>';
-									}
-								}
-							endforeach;
-							$list .= '</ul>';
-
-							return $list;
-						}
-					endif;
-				else :
-					return false;
-				endif;
-			else :
-				return __('Invalid post ID specified', 'related' );
-			endif;
+			// Get posts
+			$related_posts = get_posts(array(
+				'post_type' => 'post',
+				'post__in' => $related_ids,
+				'post_status' => 'publish',
+			));
+			
+			if ( empty( $related_posts )) {
+				return;
+			}
+			
+			// Get attachments
+			foreach ( $related_posts as &$post ) {
+				$post->thumbnail_id = get_post_thumbnail_id( $post );
+			}
+			
+			unset( $post );
+			
+			ob_start();
+				include( locate_template( 'related_post_list.php' ));
+				$template = ob_get_contents();
+			ob_end_clean();
+			
+			return $template;
 		}
 
 
@@ -311,15 +308,7 @@ if (!class_exists('ZL_Related')) :
 		public function related_content_filter( $content ) {
 			if ( (get_option( 'related_content', 0 ) == 1 && is_singular()) || get_option( 'related_content_all', 0 ) == 1 ) {
 				global $related;
-				$related_posts = $related->show( get_the_ID() );
-				if ( $related_posts ) {
-					$content .= '<div class="related_content" style="clear:both;">';
-					$content .= '<h3 class="widget-title">';
-					$content .= stripslashes(get_option('related_content_title', __('Related Posts', 'related')));
-					$content .= '</h3>';
-					$content .= $related_posts;
-					$content .= "</div>";
-				}
+				return $content.$related->fetch_list( get_the_ID() );
 			}
 			// otherwise returns the old content
 			return $content;
@@ -502,17 +491,16 @@ if (!class_exists('ZL_Walker_RelatedDropdown')) :
 endif;
 
 /*
- * related_links
  * Add Settings link to the main plugin page
  *
  */
-
 function zl_related_links( $links, $file ) {
 	if ( $file == plugin_basename( dirname(__FILE__).'/zl-related.php' ) ) {
 		$links[] = '<a href="' . admin_url( 'options-general.php?page=zl-related.php' ) . '">'.__( 'Settings', 'related' ).'</a>';
 	}
 	return $links;
 }
+
 add_filter( 'plugin_action_links', 'zl_related_links', 10, 2 );
 
 
@@ -538,3 +526,27 @@ function zl_related_init() {
 }
 add_action('plugins_loaded', 'zl_related_init');
 
+/**
+ * @param bool $post_id
+ * @param string $label_ac
+ * @param string $label_de
+ *
+ * @return string|void
+ */
+function zlr_get_relate_link ( $post_id ) {
+
+	if ( ! $post_id ) {
+		return;
+	}
+
+	if ( !current_user_can( 'edit_post', $post_id ) ) {
+		return;
+	}
+	
+	$relate_url = admin_url( sprintf( 'edit.php?zl-related-post-id=%s', $post_id ) );
+	$link = sprintf( '<a href="%s" class="zl-relate-link-add">Add to Curated Post</a>', $relate_url );
+
+	return $link;
+}
+
+add_image_size( 'related-thumb', 50, 50, true );
