@@ -106,6 +106,9 @@ if (!class_exists('ZL_Related')) :
 				} else {
 					add_action( 'admin_notices', array( &$this, 'add_admin_notice' ));
 					add_filter( 'get_edit_post_link', array( &$this, 'add_selected_post_id_to_edit_link' ));
+					add_filter( 'bulk_actions-' . 'edit-post', '__return_empty_array' );
+					add_filter( 'manage_edit-post_columns', array( &$this, 'remove_checkbox_column'));
+					add_filter( 'post_row_actions', array( &$this, 'remove_row_actions'));
 				}
 			}
 		}
@@ -425,6 +428,25 @@ if (!class_exists('ZL_Related')) :
 					add_action( 'admin_notices', array( &$this, 'add_complete_admin_notice' ));
 				}
 			}
+		}
+
+		/**
+		 * Remove checkbox from admin edit post list
+		 * @param array $columns
+		 * @return array
+		 */
+		public function remove_checkbox_column ( $columns ) {
+			unset( $columns['cb'] );
+			return $columns;
+		}
+
+		/*
+		 * Remove mouse over row actions from edit post links
+		 * @param array $actions
+		 * @return array Returns empty
+		 */
+		public function remove_row_actions ( $actions ) {
+			return array();
 		}
 	}
 
