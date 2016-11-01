@@ -328,9 +328,10 @@ if (!class_exists('ZL_Related')) :
 
 			$divider = '<span class="related-divider"> | </span>';
 			$relate_url = admin_url( sprintf( 'edit.php?zl-related-post-id=%s', $post_id ) );
+			$link_text = apply_filters( 'zl_related_link_text', 'Add to Curated Post' );
 
 			$links = array(
-				sprintf( '<a href="%s" class="zl-relate-link-add">Add to Curated Post</a>', $relate_url ),
+				sprintf( '<a href="%s" class="zl-relate-link-add">%s</a>', $relate_url, $link_text ),
 			);
 
 			$content .= '<div class="zl-relate-links">';
@@ -563,7 +564,8 @@ function zlr_get_relate_link ( $post_id ) {
 	}
 
 	$relate_url = admin_url( sprintf( 'edit.php?zl-related-post-id=%s', $post_id ) );
-	$link = sprintf( '<a href="%s" class="zl-relate-link-add">Add to Curated Post</a>', $relate_url );
+	$link_text = apply_filters( 'zl_related_link_text', 'Add to Curated Post' );
+	$link = sprintf( '<a href="%s" class="zl-relate-link-add">%s</a>', $relate_url, $link_text );
 
 	return $link;
 }
